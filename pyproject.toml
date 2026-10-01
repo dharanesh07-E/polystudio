@@ -1,0 +1,43 @@
+[project]
+name = "polystudio"
+version = "0.3.0"
+description = "One DSL → SQL, DFA, TAC, MIDI, Brainfuck"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Your Name", email = "you@example.com"}]
+keywords = ["compiler", "music", "sql", "regex", "midi"]
+dependencies = [
+    "click>=8.1",
+    "mido>=1.2.10",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.104",
+    "uvicorn[standard]>=0.24",
+    "python-multipart>=0.0.6",
+    "sqlalchemy>=2.0",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+]
+music = ["pygame>=2.5", "music21>=9.0"]
+dev = ["pytest>=7.4", "pytest-cov", "httpx", "ruff", "mypy"]
+
+[project.scripts]
+polystudio = "polystudio.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["polystudio"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
