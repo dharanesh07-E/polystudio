@@ -50,7 +50,34 @@ const DURATION_VALUES: Record<string, number> = {
   QUARTER: 1.0,
   EIGHTH: 0.5,
   SIXTEENTH: 0.25,
+  "1/1": 4.0,
+  "1/2": 2.0,
+  "1/4": 1.0,
+  "1/8": 0.5,
+  "1/16": 0.25,
+  முழு: 4.0,
+  அரை: 2.0,
+  கால்: 1.0,
+  அரைகால்: 0.5,
+  அரைக்கால்: 0.5,
+  வீசம்: 0.25,
 };
+
+function parseDurQuarter(raw: string): number {
+  const s = raw.trim();
+  if (DURATION_VALUES[s.toUpperCase()]) return DURATION_VALUES[s.toUpperCase()];
+  if (DURATION_VALUES[s]) return DURATION_VALUES[s];
+  if (s.includes("/")) {
+    const parts = s.split("/");
+    const num = parseFloat(parts[0]);
+    const den = parseFloat(parts[1]);
+    if (!isNaN(num) && !isNaN(den) && den !== 0) {
+      return (num / den) * 4.0;
+    }
+  }
+  const f = parseFloat(s);
+  return isNaN(f) ? 1.0 : f;
+}
 
 export default function PianoRoll({ source, compilerOutput }: PianoRollProps) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -61,7 +88,7 @@ export default function PianoRoll({ source, compilerOutput }: PianoRollProps) {
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Parse source into note events
+  // Parse source into note events (PolyLang & Tamil keywords)
   const parseNotes = (): { notes: NoteEvent[]; tempo: number; totalQuarters: number } => {
     const lines = source.split("\n");
     let currentTempo = 120;
@@ -72,47 +99,65 @@ export default function PianoRoll({ source, compilerOutput }: PianoRollProps) {
       const line = rawLine.trim();
       if (!line || line.startsWith("//")) continue;
 
-      const tempoMatch = line.match(/TEMPO\s+(\d+)/i);
+      // Tempo: TEMPO 120; or வேகம் 120;
+      const tempoMatch = line.match(/(?:TEMPO|வேகம்|லயம்)\s+(\d+)/i);
       if (tempoMatch) {
         currentTempo = parseInt(tempoMatch[1], 10);
       }
 
-      const noteMatch = line.match(/NOTE\s+([A-Ga-g][#b]?\d)\s+DUR\s+([A-Za-z]+)/i);
+      // Note: NOTE C4 [DUR] QUARTER; or சுரம் C4 [நேரம்] கால்; or NOTE C4 1/4;
+      const noteMatch = line.match(
+        /(?:NOTE|சுரம்|இசை)\s+([A-Ga-g][#b]?\d)(?:\s+(?:DUR|நேரம்|காலம்))?\s+([^\s;]+)/i
+      );
       if (noteMatch) {
         const pitch = noteMatch[1].toUpperCase();
-        const durName = noteMatch[2].toUpperCase();
-        const durQuarter = DURATION_VALUES[durName] || 1.0;
+        const durStr = noteMatch[2];
+        const durQuarter = parseDurQuarter(durStr);
         events.push({
           pitch,
           midi: noteToMidi(pitch),
-          duration: durName,
+          duration: durStr,
           durationQuarter: durQuarter,
           timeQuarter: currentTime,
         });
         currentTime += durQuarter;
+        continue;
       }
 
-      const chordMatch = line.match(/CHORD\s+((?:[A-Ga-g][#b]?\d\s*)+)\s+DUR\s+([A-Za-z]+)/i);
+      // Chord: CHORD C4 E4 G4 [DUR] HALF; or CHORD [C4, E4, G4] 1/2; or இசைக்கூட்டு ...
+      const chordMatch = line.match(
+        /(?:CHORD|இசைக்கூட்டு|இணை)\s+(?:\[(.*?)\]|([A-Ga-g0-9\s#b]+))(?:\s+(?:DUR|நேரம்|காலம்))?\s+([^\s;]+)/i
+      );
       if (chordMatch) {
-        const pitches = chordMatch[1].trim().split(/\s+/);
-        const durName = chordMatch[2].toUpperCase();
-        const durQuarter = DURATION_VALUES[durName] || 2.0;
+        const chordPitchesRaw = chordMatch[1] || chordMatch[2] || "";
+        const durStr = chordMatch[3];
+        const durQuarter = parseDurQuarter(durStr);
+        const pitches = chordPitchesRaw
+          .replace(/,/g, " ")
+          .trim()
+          .split(/\s+/)
+          .filter((p) => /^[A-Ga-g][#b]?\d$/.test(p));
+
         pitches.forEach((p) => {
           events.push({
             pitch: p.toUpperCase(),
             midi: noteToMidi(p),
-            duration: durName,
+            duration: durStr,
             durationQuarter: durQuarter,
             timeQuarter: currentTime,
           });
         });
-        currentTime += durQuarter;
+        if (pitches.length > 0) {
+          currentTime += durQuarter;
+        }
+        continue;
       }
 
-      const restMatch = line.match(/REST\s+DUR\s+([A-Za-z]+)/i);
+      // Rest: REST [DUR] EIGHTH; or இடைவெளி கால்; or ஓய்வு 1/4;
+      const restMatch = line.match(/(?:REST|இடைவெளி|ஓய்வு)(?:\s+(?:DUR|நேரம்|காலம்))?\s+([^\s;]+)/i);
       if (restMatch) {
-        const durName = restMatch[1].toUpperCase();
-        const durQuarter = DURATION_VALUES[durName] || 1.0;
+        const durStr = restMatch[1];
+        const durQuarter = parseDurQuarter(durStr);
         currentTime += durQuarter;
       }
     }

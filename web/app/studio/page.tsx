@@ -1,25 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Tabs from "@/components/Tabs";
+import Tabs, { StudioViewMode } from "@/components/Tabs";
 import Editor from "@/components/Editor";
 import Output from "@/components/Output";
 import ASTViewer from "@/components/ASTViewer";
+import TokensTable from "@/components/TokensTable";
 import DFAGraph from "@/components/DFAGraph";
 import PianoRoll from "@/components/PianoRoll";
 import { compileSource, PRESETS, CompileResult } from "@/lib/api";
-import { Sparkles, Terminal } from "lucide-react";
+import { Sparkles, Terminal, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function StudioPage() {
   const [target, setTarget] = useState("tac");
+  const [lang, setLang] = useState("auto");
   const [source, setSource] = useState(PRESETS.arithmetic_tac.code);
   const [result, setResult] = useState<CompileResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeView, setActiveView] = useState<"output" | "visualizer" | "ast">("output");
+  const [activeView, setActiveView] = useState<StudioViewMode>("output");
 
   const handleCompile = async () => {
     setIsLoading(true);
-    const res = await compileSource(source, target);
+    const res = await compileSource(source, target, lang);
     setResult(res);
     setIsLoading(false);
   };
@@ -28,19 +30,24 @@ export default function StudioPage() {
     setTarget(t);
     // Switch to a relevant default preset if current code doesn't match target
     if (t === "midi") {
-      setSource(PRESETS.fur_elise.code);
+      setSource(PRESETS.tamil_song_chinna.code);
+      setLang("tamil");
       setActiveView("visualizer");
     } else if (t === "sql") {
       setSource(PRESETS.sql_query.code);
+      setLang("poly");
       setActiveView("output");
     } else if (t === "dfa") {
       setSource(PRESETS.regex_dfa.code);
+      setLang("poly");
       setActiveView("visualizer");
     } else if (t === "bf") {
       setSource(PRESETS.brainfuck.code);
+      setLang("poly");
       setActiveView("output");
     } else {
       setSource(PRESETS.arithmetic_tac.code);
+      setLang("poly");
       setActiveView("output");
     }
   };
@@ -50,6 +57,9 @@ export default function StudioPage() {
     if (p) {
       setSource(p.code);
       setTarget(p.target);
+      if (p.lang) {
+        setLang(p.lang);
+      }
       if (p.target === "midi" || p.target === "dfa") {
         setActiveView("visualizer");
       } else {
@@ -58,15 +68,23 @@ export default function StudioPage() {
     }
   };
 
-  // Compile on initial mount
+  // Compile on initial mount or when target/lang changes
   useEffect(() => {
     handleCompile();
-  }, [target]);
+  }, [target, lang]);
 
   const hasVisualizer = target === "midi" || target === "dfa";
 
   return (
     <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col space-y-4">
+      {/* Top Compilation Status Banner (matching user screenshot) */}
+      {result?.success && (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 shadow-lg text-sm font-medium animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span>Compiled Successfully!</span>
+        </div>
+      )}
+
       {/* Studio Header & Tab Switcher */}
       <div className="glass-panel p-4 rounded-2xl border border-white/10 shadow-lg">
         <Tabs
@@ -75,6 +93,7 @@ export default function StudioPage() {
           activeView={activeView}
           onChangeView={setActiveView}
           hasVisualizer={hasVisualizer}
+          tokenCount={result?.tokens?.length}
         />
       </div>
 
@@ -88,14 +107,22 @@ export default function StudioPage() {
             onCompile={handleCompile}
             isLoading={isLoading}
             selectedTarget={target}
+            selectedLang={lang}
+            onSelectLang={setLang}
             onSelectPreset={handleSelectPreset}
           />
         </div>
 
-        {/* Right Column: View Switcher (Output / Visualizer / AST) */}
+        {/* Right Column: View Switcher (Output / Tokens / AST / Visualizer) */}
         <div className="h-full min-h-[400px]">
-          {activeView === "ast" ? (
-            <ASTViewer ast={result?.ast || null} error={result?.error} />
+          {activeView === "tokens" ? (
+            <TokensTable tokens={result?.tokens} isLoading={isLoading} />
+          ) : activeView === "ast" ? (
+            <ASTViewer
+              ast={result?.ast || null}
+              ast_json={result?.ast_json}
+              error={result?.error}
+            />
           ) : activeView === "visualizer" && target === "midi" ? (
             <PianoRoll source={source} compilerOutput={result?.output} />
           ) : activeView === "visualizer" && target === "dfa" ? (
@@ -105,6 +132,7 @@ export default function StudioPage() {
               result={result}
               target={target}
               source={source}
+              lang={lang}
               isLoading={isLoading}
             />
           )}

@@ -10,6 +10,8 @@ interface EditorProps {
   onCompile: () => void;
   isLoading?: boolean;
   selectedTarget: string;
+  selectedLang?: string;
+  onSelectLang?: (lang: string) => void;
   onSelectPreset?: (presetKey: string) => void;
 }
 
@@ -19,6 +21,8 @@ export default function Editor({
   onCompile,
   isLoading = false,
   selectedTarget,
+  selectedLang = "auto",
+  onSelectLang,
   onSelectPreset,
 }: EditorProps) {
   const [copied, setCopied] = React.useState(false);
@@ -60,26 +64,56 @@ export default function Editor({
     }
   };
 
+  const getLangBadge = () => {
+    switch (selectedLang) {
+      case "tamil":
+        return { label: "தமிழ்", color: "bg-orange-500/20 text-orange-300 border-orange-500/30" };
+      case "c":
+        return { label: "C Subset", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" };
+      case "poly":
+        return { label: "PolyLang", color: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" };
+      default:
+        return { label: "Auto Detect", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" };
+    }
+  };
+
+  const langBadge = getLangBadge();
+
   return (
     <div className="flex flex-col h-full rounded-xl border border-white/10 glass-panel overflow-hidden">
       {/* Editor Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900/90 border-b border-white/10 text-xs">
+      <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-slate-900/90 border-b border-white/10 text-xs gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex gap-1.5 mr-2">
+          <div className="flex gap-1.5 mr-1">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block" />
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block" />
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
           </div>
           <span className="font-mono text-slate-300 font-semibold tracking-wider flex items-center gap-1.5">
-            source.poly
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              PolyLang
+            source.{selectedLang === "c" ? "c" : "poly"}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${langBadge.color}`}>
+              {langBadge.label}
             </span>
           </span>
         </div>
 
-        {/* Action buttons & Preset loader */}
+        {/* Action buttons & Selectors */}
         <div className="flex items-center gap-2">
+          {/* Language selector */}
+          {onSelectLang && (
+            <select
+              value={selectedLang}
+              onChange={(e) => onSelectLang(e.target.value)}
+              className="px-2 py-1 bg-slate-800 text-slate-300 rounded-md border border-white/10 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value="auto">🌐 Auto Detect</option>
+              <option value="poly">English (PolyLang)</option>
+              <option value="tamil">தமிழ் (Tamil)</option>
+              <option value="c">C Subset</option>
+            </select>
+          )}
+
+          {/* Preset loader */}
           {onSelectPreset && (
             <div className="relative flex items-center">
               <BookOpen className="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none" />
@@ -90,12 +124,12 @@ export default function Editor({
                   }
                 }}
                 defaultValue=""
-                className="pl-7 pr-3 py-1 bg-slate-800/90 hover:bg-slate-800 text-slate-300 rounded-md border border-white/10 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                className="pl-7 pr-3 py-1 bg-slate-800/90 hover:bg-slate-800 text-slate-300 rounded-md border border-white/10 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer max-w-[170px] truncate"
               >
                 <option value="" disabled>Load Example...</option>
                 {Object.entries(PRESETS).map(([k, p]) => (
                   <option key={k} value={k}>
-                    {p.name} ({p.target.toUpperCase()})
+                    {p.name}
                   </option>
                 ))}
               </select>

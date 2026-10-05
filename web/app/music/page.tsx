@@ -8,26 +8,30 @@ import { compileSource, PRESETS, CompileResult } from "@/lib/api";
 import { Music, Sparkles, Download, Layers } from "lucide-react";
 
 export default function MusicPage() {
-  const [source, setSource] = useState(PRESETS.fur_elise.code);
+  const [source, setSource] = useState(PRESETS.tamil_song_chinna.code);
+  const [lang, setLang] = useState("tamil");
   const [result, setResult] = useState<CompileResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [viewTab, setViewTab] = useState<"pianoroll" | "raw">("pianoroll");
 
-  const handleCompile = async () => {
+  const handleCompile = async (sourceCode = source, language = lang) => {
     setIsLoading(true);
-    const res = await compileSource(source, "midi");
+    const res = await compileSource(sourceCode, "midi", language);
     setResult(res);
     setIsLoading(false);
   };
 
   useEffect(() => {
     handleCompile();
-  }, []);
+  }, [lang]);
 
   const musicPresets = [
-    { key: "fur_elise", label: "Beethoven's Für Elise" },
-    { key: "scale", label: "C Major Scale" },
-    { key: "chord", label: "Harmonic Chords (I-IV-V-I)" },
+    { key: "tamil_song_chinna", label: "சின்ன சின்ன ஆசை (Roja)", lang: "tamil" },
+    { key: "tamil_song_munbe", label: "முன்பே வா (Munbe Vaa)", lang: "tamil" },
+    { key: "tamil_music", label: "தமிழ் இசை (Scale)", lang: "tamil" },
+    { key: "fur_elise", label: "Für Elise (PolyLang)", lang: "poly" },
+    { key: "scale", label: "C Major Scale", lang: "poly" },
+    { key: "chord", label: "Chords (I-IV-V-I)", lang: "poly" },
   ];
 
   return (
@@ -43,7 +47,7 @@ export default function MusicPage() {
               Music Studio & Synthesizer
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Compose algorithmic music in PolyLang and synthesize it in the browser or export to MIDI.
+              Compose algorithmic music in PolyLang & Tamil keywords (வேகம், சுரம், நேரம்) and synthesize it in the browser.
             </p>
           </div>
         </div>
@@ -55,8 +59,13 @@ export default function MusicPage() {
             <button
               key={p.key}
               onClick={() => {
-                setSource(PRESETS[p.key].code);
-                setViewTab("pianoroll");
+                const pData = PRESETS[p.key];
+                if (pData) {
+                  setSource(pData.code);
+                  setLang(p.lang);
+                  handleCompile(pData.code, p.lang);
+                  setViewTab("pianoroll");
+                }
               }}
               className="px-3 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-white/10 transition-colors"
             >
@@ -73,9 +82,19 @@ export default function MusicPage() {
           <Editor
             value={source}
             onChange={setSource}
-            onCompile={handleCompile}
+            onCompile={() => handleCompile()}
             isLoading={isLoading}
             selectedTarget="midi"
+            selectedLang={lang}
+            onSelectLang={setLang}
+            onSelectPreset={(key) => {
+              const p = PRESETS[key];
+              if (p) {
+                setSource(p.code);
+                if (p.lang) setLang(p.lang);
+                handleCompile(p.code, p.lang || "auto");
+              }
+            }}
           />
         </div>
 
@@ -119,6 +138,7 @@ export default function MusicPage() {
                 result={result}
                 target="midi"
                 source={source}
+                lang={lang}
                 isLoading={isLoading}
               />
             )}

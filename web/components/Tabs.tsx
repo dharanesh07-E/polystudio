@@ -19,12 +19,15 @@ export const TARGETS: TargetOption[] = [
   { id: "bf", name: "Brainfuck", icon: <Binary className="w-4 h-4" />, color: "from-rose-500 to-red-600", badge: "Esolang Tape" },
 ];
 
+export type StudioViewMode = "output" | "tokens" | "ast" | "visualizer";
+
 interface TabsProps {
   selectedTarget: string;
   onSelectTarget: (target: string) => void;
-  activeView?: "output" | "visualizer" | "ast";
-  onChangeView?: (view: "output" | "visualizer" | "ast") => void;
+  activeView?: StudioViewMode;
+  onChangeView?: (view: StudioViewMode) => void;
   hasVisualizer?: boolean;
+  tokenCount?: number;
 }
 
 export default function Tabs({
@@ -33,6 +36,7 @@ export default function Tabs({
   activeView = "output",
   onChangeView,
   hasVisualizer = true,
+  tokenCount,
 }: TabsProps) {
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
@@ -57,19 +61,47 @@ export default function Tabs({
         })}
       </div>
 
-      {/* Output / Visualizer / AST mode switcher */}
+      {/* Output / Tokens / AST / Visualizer mode switcher */}
       {onChangeView && (
         <div className="flex items-center self-end sm:self-auto bg-slate-900/80 p-0.5 rounded-lg border border-white/10 text-xs">
           <button
             onClick={() => onChangeView("output")}
-            className={`px-3 py-1 rounded-md transition-colors ${
+            className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
               activeView === "output"
                 ? "bg-indigo-600 text-white shadow-sm font-semibold"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Output
+            <span>💻 Output</span>
           </button>
+
+          <button
+            onClick={() => onChangeView("tokens")}
+            className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+              activeView === "tokens"
+                ? "bg-indigo-600 text-white shadow-sm font-semibold"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>🔤 Tokens</span>
+            {tokenCount !== undefined && tokenCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/10 text-slate-300">
+                {tokenCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => onChangeView("ast")}
+            className={`px-3 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
+              activeView === "ast"
+                ? "bg-indigo-600 text-white shadow-sm font-semibold"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>🌳 AST</span>
+          </button>
+
           {hasVisualizer && (
             <button
               onClick={() => onChangeView("visualizer")}
@@ -80,19 +112,9 @@ export default function Tabs({
               }`}
             >
               <Sparkles className="w-3 h-3 text-amber-400" />
-              Visualizer
+              <span>Visualizer</span>
             </button>
           )}
-          <button
-            onClick={() => onChangeView("ast")}
-            className={`px-3 py-1 rounded-md transition-colors ${
-              activeView === "ast"
-                ? "bg-indigo-600 text-white shadow-sm font-semibold"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            AST Tree
-          </button>
         </div>
       )}
     </div>
